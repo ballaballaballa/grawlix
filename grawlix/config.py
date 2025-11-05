@@ -1,8 +1,14 @@
 from dataclasses import dataclass
 from typing import Optional
-import tomli
+import sys
 from platformdirs import user_config_dir
 import os
+
+# Import tomli or tomllib depending on Python version
+if sys.version_info >= (3, 11):
+    import tomllib as tomli
+else:
+    import tomli
 
 
 @dataclass(slots=True)

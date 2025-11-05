@@ -30,6 +30,15 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-httpx>=0.21.0",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/jo1gi/grawlix"
 "Bugtracker" = "https://github.com/jo1gi/grawlix/issues"
@@ -53,3 +62,21 @@ grawlix = ["*.txt"]
 ignore_missing_imports = true
 allow_untyped_globals = false
 disallow_untyped_calls = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--cov=grawlix",
+    "--cov-report=html",
+    "--cov-report=term-missing:skip-covered",
+    "-v",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
