@@ -163,8 +163,8 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
     # Download the book
     await download_book(book, update_function, template)
 
-    # Convert PDF-in-epub to PDF if needed
-    if book.source_data and book.source_data.get('format_type') == 'pdf':
+    # Convert PDF-in-epub to PDF if needed (Nextory wraps PDFs in epub containers)
+    if book.source_data and book.source_data.get('source_name') == 'nextory':
         from .output import format_output_location, get_default_format
         from .pdf_converter import convert_pdf_epub_to_pdf, is_pdf_in_epub
 

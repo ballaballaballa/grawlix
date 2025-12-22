@@ -113,7 +113,7 @@ class Nextory(Source):
 
     async def _download_book(self, book_id: str) -> Book:
         product_data = await self._get_product_data(book_id)
-        format_type, format_id = self._find_format(product_data)
+        _, format_id = self._find_format(product_data)
         # Nextory serves all books via epub endpoint regardless of original format
         data = await self._get_epub_data(format_id)
 
@@ -126,7 +126,6 @@ class Nextory(Source):
             ),
             source_data = {
                 "source_name": "nextory",
-                "format_type": format_type,
                 "details": product_data
             }
         )
