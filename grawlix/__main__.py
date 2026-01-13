@@ -166,7 +166,7 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
     # Convert PDF-in-epub to PDF if needed (Nextory wraps PDFs in epub containers)
     if book.source_data and book.source_data.get('source_name') == 'nextory':
         from .output import format_output_location, get_default_format
-        from .pdf_converter import convert_pdf_epub_to_pdf, is_pdf_in_epub
+        from .output.pdf_converter import convert_pdf_epub_to_pdf, is_pdf_in_epub
 
         output_format = get_default_format(book)
         location = format_output_location(book, output_format, template)
@@ -178,7 +178,7 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
     # Write metadata if requested and available
     if write_metadata and book.source_data:
         from .output import format_output_location, get_default_format, find_output_format, get_valid_extensions
-        from . import epub_metadata, epub_metadata_writers
+        from .output.metadata import epub_metadata, epub_metadata_writers
 
         # Determine output file location
         _, ext = os.path.splitext(template)
