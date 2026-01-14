@@ -129,11 +129,7 @@ class Storytel(Source):
                     extension = "epub",
                     headers = self._client.headers
                 )
-            ),
-            source_data = {
-                "source_name": "storytel",
-                "details": details
-            }
+            )
         )
         return book
 
@@ -154,15 +150,21 @@ class Storytel(Source):
 
         # Extract basic metadata
         title = details.get("title", "Unknown")
+        original_title = details.get("originalTitle")
         authors = [author["name"] for author in details.get("authors", [])]
+        translators = [translator["name"] for translator in details.get("translators", [])]
         language = details.get("language")
         description = details.get("description")
+        category = details.get("category", {}).get("name") if details.get("category") else None
+        tags = [tag["name"] for tag in details.get("tags", [])[:10]]
 
-        # Extract ebook-specific publisher and release date
+        # Extract ebook-specific publisher, ISBN, and release date
         publisher = None
+        isbn = None
         release_date = None
         if ebook_format:
             publisher = ebook_format.get("publisher", {}).get("name")
+            isbn = ebook_format.get("isbn")
             release_date_str = ebook_format.get("releaseDate")
             if release_date_str:
                 # Parse ISO format date
@@ -178,13 +180,18 @@ class Storytel(Source):
 
         return Metadata(
             title=title,
+            original_title=original_title,
             authors=authors,
+            translators=translators,
             language=language,
             publisher=publisher,
+            isbn=isbn,
             description=description,
             release_date=release_date,
             series=series,
             index=index,
+            category=category,
+            tags=tags,
             source="Storytel"
         )
 

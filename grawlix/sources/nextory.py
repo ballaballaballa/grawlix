@@ -3,7 +3,8 @@ from grawlix.encryption import AESEncryption
 from grawlix.exceptions import InvalidUrl
 from .source import Source
 
-from typing import Optional, Tuple
+from typing import Tuple
+from datetime import date
 import uuid
 import base64
 
@@ -36,7 +37,7 @@ class Nextory(Source):
         session_response = await self._client.post(
             "https://api.nextory.com/user/v1/sessions",
             json = {
-                "identifier": username,
+                "isbn": username,
                 "password": password
             },
         )
@@ -116,18 +117,11 @@ class Nextory(Source):
         _, format_id = self._find_format(product_data)
         # Nextory serves all books via epub endpoint regardless of original format
         data = await self._get_epub_data(format_id)
+        metadata = self._extract_metadata(product_data)
 
         return Book(
             data = data,
-            metadata = Metadata(
-                title = product_data["title"],
-                authors = [author["name"] for author in product_data["authors"]],
-                series = self._extract_series_name(product_data),
-            ),
-            source_data = {
-                "source_name": "nextory",
-                "details": product_data
-            }
+            metadata = metadata,
         )
 
 
@@ -150,16 +144,70 @@ class Nextory(Source):
         for format_type in ("epub", "pdf"):
             for fmt in product_data["formats"]:
                 if fmt["type"] == format_type:
-                    return (format_type, fmt["identifier"])
+                    return (format_type, fmt["isbn"])
         raise InvalidUrl
 
 
-    @staticmethod
-    def _extract_series_name(product_info: dict) -> Optional[str]:
-        series = product_info.get("series")
-        if series is None:
-            return None
-        return series["name"]
+    def _extract_metadata(self, product_data: dict) -> Metadata:
+        """
+        Extract metadata from Nextory product data
+
+        :param product_data: Product data from Nextory API
+        :return: Metadata object
+        """
+        # Find epub or pdf format for format-specific metadata
+        ebook_format = None
+        for fmt_type in ("epub", "pdf"):
+            for fmt in product_data.get("formats", []):
+                if fmt.get("type") == fmt_type:
+                    ebook_format = fmt
+                    break
+            if ebook_format:
+                break
+
+        # Basic metadata
+        title = product_data.get("title", "Unknown")
+        authors = [author["name"] for author in product_data.get("authors", [])]
+        description = product_data.get("description_full")
+        language = product_data.get("language")
+
+        # Format-specific metadata
+        publisher = None
+        isbn = None
+        release_date = None
+        translators = []
+        if ebook_format:
+            publisher = ebook_format.get("publisher", {}).get("name") if ebook_format.get("publisher") else None
+            isbn = ebook_format.get("isbn")
+            translators = [t["name"] for t in ebook_format.get("translators", [])]
+            pub_date = ebook_format.get("publication_date")
+            if pub_date:
+                # Format is YYYY-MM-DD
+                release_date = date.fromisoformat(pub_date)
+
+        # Series info
+        series = None
+        index = None
+        series_info = product_data.get("series")
+        if series_info:
+            series = series_info.get("name")
+        volume = product_data.get("volume")
+        if volume:
+            index = volume
+
+        return Metadata(
+            title=title,
+            authors=authors,
+            translators=translators,
+            language=language,
+            publisher=publisher,
+            isbn=isbn,
+            description=description,
+            release_date=release_date,
+            series=series,
+            index=index,
+            source="Nextory"
+        )
 
 
     async def _get_epub_data(self, epub_id: str) -> BookData:

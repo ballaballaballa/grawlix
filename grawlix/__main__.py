@@ -164,7 +164,7 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
     await download_book(book, update_function, template)
 
     # Convert PDF-in-epub to PDF if needed (Nextory wraps PDFs in epub containers)
-    if book.source_data and book.source_data.get('source_name') == 'nextory':
+    if book.metadata.source == "Nextory":
         from .output import format_output_location, get_default_format
         from .output.pdf_converter import convert_pdf_epub_to_pdf, is_pdf_in_epub
 
@@ -175,10 +175,10 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
             convert_pdf_epub_to_pdf(location)
             logging.debug(f"Converted PDF-in-epub to PDF: {location}")
 
-    # Write metadata if requested and available
-    if write_metadata and book.source_data:
+    # Write metadata if requested
+    if write_metadata:
         from .output import format_output_location, get_default_format, find_output_format, get_valid_extensions
-        from .output.metadata import epub_metadata, epub_metadata_writers
+        from .output.metadata import epub_metadata
 
         # Determine output file location
         _, ext = os.path.splitext(template)
@@ -195,17 +195,7 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
 
         # Write metadata if it's an EPUB file
         if location.endswith('.epub') and os.path.exists(location):
-            # Get source-specific data and transformer
-            source_name = book.source_data.get('source_name')
-            source_details = book.source_data.get('details')
-
-            if source_name and source_details:
-                transformer = epub_metadata_writers.get_transformer(source_name)
-                if transformer:
-                    transformed_metadata = transformer(source_details)
-                    epub_metadata.write_metadata_to_epub(transformed_metadata, location)
-                else:
-                    logging.debug(f"No metadata transformer found for source: {source_name}")
+            epub_metadata.write_metadata_to_epub(book.metadata, location)
 
     progress.advance(task, 1)
 
