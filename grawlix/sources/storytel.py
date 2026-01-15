@@ -21,7 +21,7 @@ class Storytel(Source):
 
     # Authentication methods
 
-    async def login(self, username: str, password: str, **kwargs) -> None:
+    async def login(self, url: str, username: str, password: str) -> None:
         self.__username = username
         self.__password = self.encrypt_password(password)
         self._client.headers.update({"User-Agent": "Storytel/23.49 (Android 13; Pixel 6) Release/2288481"})

@@ -37,7 +37,7 @@ class Nextory(Source):
         session_response = await self._client.post(
             "https://api.nextory.com/user/v1/sessions",
             json = {
-                "isbn": username,
+                "identifier": username,
                 "password": password
             },
         )
@@ -144,7 +144,7 @@ class Nextory(Source):
         for format_type in ("epub", "pdf"):
             for fmt in product_data["formats"]:
                 if fmt["type"] == format_type:
-                    return (format_type, fmt["isbn"])
+                    return (format_type, fmt["identifier"])
         raise InvalidUrl
 
 
