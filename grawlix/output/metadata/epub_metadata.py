@@ -118,6 +118,10 @@ def _find_opf_file(epub_dir: str) -> str:
 
 def _update_epub_metadata(metadata_elem, metadata: Metadata, ns: dict, using_lxml: bool) -> None:
     """Update EPUB metadata elements from Metadata object"""
+    if using_lxml:
+        from lxml import etree as ET
+    else:
+        import xml.etree.ElementTree as ET
 
     # Helper function to create/update element
     def update_or_create_element(tag: str, text: str, attribs: dict = None):
@@ -129,13 +133,7 @@ def _update_epub_metadata(metadata_elem, metadata: Metadata, ns: dict, using_lxm
             metadata_elem.remove(elem)
 
         # Create new element
-        if using_lxml:
-            from lxml import etree as ET
-            elem = ET.SubElement(metadata_elem, tag)
-        else:
-            import xml.etree.ElementTree as ET
-            elem = ET.SubElement(metadata_elem, tag)
-
+        elem = ET.SubElement(metadata_elem, tag)
         elem.text = str(text)
         if attribs:
             for key, value in attribs.items():
@@ -145,14 +143,7 @@ def _update_epub_metadata(metadata_elem, metadata: Metadata, ns: dict, using_lxm
     def create_meta(name: str, content):
         if content is None:
             return
-
-        if using_lxml:
-            from lxml import etree as ET
-            meta = ET.SubElement(metadata_elem, f"{{{ns['opf']}}}meta")
-        else:
-            import xml.etree.ElementTree as ET
-            meta = ET.SubElement(metadata_elem, f"{{{ns['opf']}}}meta")
-
+        meta = ET.SubElement(metadata_elem, f"{{{ns['opf']}}}meta")
         meta.set('name', name)
         meta.set('content', str(content))
 
@@ -166,44 +157,25 @@ def _update_epub_metadata(metadata_elem, metadata: Metadata, ns: dict, using_lxm
             elem.set('id', 'main-title')
 
         # Add original title
-        if using_lxml:
-            from lxml import etree as ET
-            orig_title = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}title")
-        else:
-            import xml.etree.ElementTree as ET
-            orig_title = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}title")
-
+        orig_title = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}title")
         orig_title.set('id', 'original-title')
         orig_title.text = metadata.original_title
 
         # Add meta refinement for original title
-        if using_lxml:
-            meta = ET.SubElement(metadata_elem, f"{{{ns['opf']}}}meta")
-        else:
-            meta = ET.SubElement(metadata_elem, f"{{{ns['opf']}}}meta")
+        meta = ET.SubElement(metadata_elem, f"{{{ns['opf']}}}meta")
         meta.set('refines', '#original-title')
         meta.set('property', 'title-type')
         meta.text = 'original'
 
     # Authors
     for author in metadata.authors:
-        if using_lxml:
-            from lxml import etree as ET
-            creator = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}creator")
-        else:
-            import xml.etree.ElementTree as ET
-            creator = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}creator")
+        creator = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}creator")
         creator.text = author
         creator.set(f"{{{ns['opf']}}}role", "aut")
 
     # Translators
     for translator in metadata.translators:
-        if using_lxml:
-            from lxml import etree as ET
-            contributor = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}contributor")
-        else:
-            import xml.etree.ElementTree as ET
-            contributor = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}contributor")
+        contributor = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}contributor")
         contributor.text = translator
         contributor.set(f"{{{ns['opf']}}}role", "trl")
 
@@ -225,12 +197,7 @@ def _update_epub_metadata(metadata_elem, metadata: Metadata, ns: dict, using_lxm
                 metadata_elem.remove(elem)
 
         # Add new ISBN
-        if using_lxml:
-            from lxml import etree as ET
-            identifier = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}identifier")
-        else:
-            import xml.etree.ElementTree as ET
-            identifier = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}identifier")
+        identifier = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}identifier")
         identifier.text = metadata.isbn
         identifier.set(f"{{{ns['opf']}}}scheme", "ISBN")
 
@@ -240,28 +207,38 @@ def _update_epub_metadata(metadata_elem, metadata: Metadata, ns: dict, using_lxm
 
     # Category
     if metadata.category:
-        if using_lxml:
-            from lxml import etree as ET
-            subject = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}subject")
-        else:
-            import xml.etree.ElementTree as ET
-            subject = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}subject")
+        subject = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}subject")
         subject.text = metadata.category
 
     # Tags
     for tag in metadata.tags:
-        if using_lxml:
-            from lxml import etree as ET
-            subject = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}subject")
-        else:
-            import xml.etree.ElementTree as ET
-            subject = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}subject")
+        subject = ET.SubElement(metadata_elem, f"{{{ns['dc']}}}subject")
         subject.text = tag
 
     # Series info (Calibre format) - using series and index fields
     if metadata.series:
         create_meta("calibre:series", metadata.series)
         create_meta("calibre:series_index", metadata.index)
+
+    # EPUB 3 rendition properties (fixed-layout support)
+    # These use <meta property="...">value</meta> format, not name/content
+    def create_meta_property(property_name: str, value: str):
+        if not value:
+            return
+        # Remove existing property if present
+        for elem in list(metadata_elem):
+            if elem.get('property') == property_name:
+                metadata_elem.remove(elem)
+        meta = ET.SubElement(metadata_elem, 'meta')
+        meta.set('property', property_name)
+        meta.text = value
+
+    if metadata.rendition_layout:
+        create_meta_property('rendition:layout', metadata.rendition_layout)
+    if metadata.rendition_spread:
+        create_meta_property('rendition:spread', metadata.rendition_spread)
+    if metadata.rendition_orientation:
+        create_meta_property('rendition:orientation', metadata.rendition_orientation)
 
 
 def _repack_epub(epub_dir: str, output_path: str) -> None:

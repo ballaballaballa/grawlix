@@ -20,6 +20,10 @@ class Metadata:
     translators: list[str] = field(default_factory=list)
     category: Optional[str] = None
     tags: list[str] = field(default_factory=list)
+    # EPUB 3 rendition properties (fixed-layout support)
+    rendition_layout: Optional[str] = None      # "pre-paginated" or "reflowable"
+    rendition_spread: Optional[str] = None      # "none", "auto", "landscape", "portrait", "both"
+    rendition_orientation: Optional[str] = None # "auto", "landscape", "portrait"
 
     def as_dict(self) -> dict:
         return {
