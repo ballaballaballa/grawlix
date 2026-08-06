@@ -74,7 +74,7 @@ class Storytel(Source):
         await self.reauthenticate()
 
         if m := re.match(self.match[0], url):
-            language, language2, list_type = m.groups()
+            _, _, list_type = m.groups()
 
             if list_type == "books":
                 book_id = self.extract_id_from_url(url)
@@ -82,7 +82,7 @@ class Storytel(Source):
                 return await self.download_book_from_id(book_id)
 
             if list_type in ("series", "authors", "narrators"):
-                return await self.download_list(url, list_type, language)
+                return await self.download_list(url, list_type)
 
         raise InvalidUrl
 
@@ -198,18 +198,17 @@ class Storytel(Source):
 
     # List download path
 
-    async def download_list(self, url: str, list_type: str, language: str) -> Series:
+    async def download_list(self, url: str, list_type: str) -> Series:
         """
         Download list of books
 
         :param url: Url of list page
         :param list_type: Type of list (either series, authors, or narrators)
-        :param language: The language of the books in the list
         :return: List of books
         """
         list_id = self.extract_id_from_url(url)
         logging.debug(f"{list_id=}")
-        list_details = await self.download_list_details(list_id, list_type, language)
+        list_details = await self.download_list_details(list_id, list_type)
 
         books: list[str] = [
             item["id"]
@@ -227,8 +226,8 @@ class Storytel(Source):
         self,
         list_id: str,
         list_type: str,
-        languages: str,
-        formats: str = "ebook",
+        languages: str = "en,de,tr,ar,ru,pl,it,es,sv,fr,nl",
+        formats: str = "abook,ebook,podcast",
     ) -> dict[str, Any]:
         """Download details about book list
 
@@ -240,7 +239,7 @@ class Storytel(Source):
         result: dict[str, Any] = {"nextPageToken": None}
         is_first_page = True
 
-        while result["nextPageToken"] is not None or is_first_page:
+        while result.get("nextPageToken") is not None or is_first_page:
             params: dict[str, str] = {
                 "includeListDetails": "true",  # include listMetadata,filterOptions,sortOption sections
                 "includeFormats": formats,
@@ -261,7 +260,7 @@ class Storytel(Source):
                 is_first_page = False
             else:
                 result["items"].extend(data["items"])
-                result["nextPageToken"] = data["nextPageToken"]
+                result["nextPageToken"] = data.get("nextPageToken")
             logging.debug(f"{result=}")
 
         return result
