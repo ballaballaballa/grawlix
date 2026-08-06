@@ -25,7 +25,7 @@ class Nextory(Source):
         self._client.headers.update(
             {
                 "X-Application-Id": "200",
-                "X-App-Version": "2025.12.1",
+                "X-App-Version": "2026.07.9",
                 "X-Locale": LOCALE,
                 "X-Model": "Personal Computer",
                 "X-Device-Id": device_id,
