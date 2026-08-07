@@ -1,6 +1,5 @@
 from grawlix.book import Book, BookData, SingleFile, ImageList, OnlineFile, HtmlFiles, EpubInParts
 from grawlix.exceptions import GrawlixError, UnsupportedOutputFormat
-from grawlix.logging import info
 
 from .output_format import OutputFormat
 from .acsm import Acsm
@@ -8,16 +7,17 @@ from .cbz import Cbz
 from .epub import Epub
 from .pdf import Pdf
 
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional
 from pathlib import Path
 import os
 import platform
 
-async def download_book(book: Book, update_func: Callable, template: str) -> None:
+async def download_book(book: Book, update_func: Callable, template: str) -> Optional[str]:
     """
     Download and write book to disk
 
     :param book: Book to download
+    :returns: A skip reason if the book was skipped, otherwise None
     """
     _, ext = os.path.splitext(template)
     ext = ext[1:]
@@ -27,13 +27,13 @@ async def download_book(book: Book, update_func: Callable, template: str) -> Non
         output_format = get_default_format(book)
     location = format_output_location(book, output_format, template)
     if not book.overwrite and os.path.exists(location):
-        info("Skipping - File already exists")
-        return
+        return "Skipping - File already exists"
     parent = Path(location).parent
     if not parent.exists():
         os.makedirs(parent)
     await output_format.download(book, location, update_func)
     await output_format.close()
+    return None
 
 
 def format_output_location(book: Book, output_format: OutputFormat, template: str) -> str:

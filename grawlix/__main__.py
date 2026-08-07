@@ -1,6 +1,6 @@
 from .book import Book, Series
 from .config import load_config, Config, SourceConfig
-from .exceptions import SourceNotAuthenticated, GrawlixError, AccessDenied
+from .exceptions import SourceNotAuthenticated, GrawlixError, AccessDenied, DataNotFound
 from .sources import load_source, Source
 from .output import download_book
 from . import  arguments, logging
@@ -144,7 +144,11 @@ async def download_series(source: Source, series: Series, args, config: Config) 
                 book: Book = await source.download_book_from_id(book_id)
                 await download_with_progress(book, progress, template, write_metadata)
             except AccessDenied as error:
-                logging.info("Skipping - Access Denied")
+                task = logging.add_task(progress, book_id)
+                logging.skip_task(progress, task, "Skipping - Access Denied")
+            except DataNotFound as error:
+                task = logging.add_task(progress, book_id)
+                logging.skip_task(progress, task, "Skipping - Not Found")
 
 
 
@@ -161,7 +165,10 @@ async def download_with_progress(book: Book, progress: Progress, template: str, 
     update_function = partial(progress.advance, task)
 
     # Download the book
-    await download_book(book, update_function, template)
+    skip_reason = await download_book(book, update_function, template)
+    if skip_reason is not None:
+        logging.skip_task(progress, task, skip_reason)
+        return
 
     # Convert PDF-in-epub to PDF if needed (Nextory wraps PDFs in epub containers)
     if book.metadata.source == "Nextory":

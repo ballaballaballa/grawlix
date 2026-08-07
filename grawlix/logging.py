@@ -3,8 +3,9 @@ from grawlix.book import Book
 import rich
 from rich.console import Console
 from rich.markup import render
-from rich.progress import Progress, BarColumn, ProgressColumn, TaskID, SpinnerColumn
+from rich.progress import Progress, BarColumn, ProgressColumn, TaskID, SpinnerColumn, Task
 from rich.style import Style
+from rich.text import Text
 
 from typing import Union
 from dataclasses import dataclass
@@ -58,6 +59,25 @@ def print_error_file(name: str, **kwargs) -> None:
     error(message)
 
 
+class SkippableBarColumn(BarColumn):
+    """Bar column that renders blank for tasks flagged with a skip_reason"""
+
+    def render(self, task: Task):
+        if task.fields.get("skip_reason"):
+            return Text("")
+        return super().render(task)
+
+
+class SkippableStatusColumn(ProgressColumn):
+    """Shows the skip reason in place of the percentage for skipped tasks"""
+
+    def render(self, task: Task) -> Text:
+        skip_reason = task.fields.get("skip_reason")
+        if skip_reason:
+            return Text(skip_reason, style="yellow")
+        return Text(f"{task.percentage:>3.0f}%", style="progress.percentage")
+
+
 def progress(category_name: str, source_name: str, count=1) -> Progress:
     if count > 1:
         console.print(f"Downloading [yellow not bold]{count}[/] books in [blue]{category_name}[/] from [magenta]{source_name}[/]")
@@ -66,16 +86,26 @@ def progress(category_name: str, source_name: str, count=1) -> Progress:
     progress = Progress(
         SpinnerColumn(),
         "{task.description}",
-        BarColumn(),
-        "[progress.percentage]{task.percentage:>3.0f}%",
+        SkippableBarColumn(),
+        SkippableStatusColumn(),
         console = console,
     )
     return progress
 
 
-def add_book(progress: Progress, book: Book) -> TaskID:
+def add_task(progress: Progress, label: str) -> TaskID:
     task = progress.add_task(
-        f"[blue]{book.metadata.title}[/]",
+        f"[blue]{label}[/]",
         total = 1
     )
     return task
+
+
+def add_book(progress: Progress, book: Book) -> TaskID:
+    return add_task(progress, book.metadata.title)
+
+
+def skip_task(progress: Progress, task: TaskID, reason: str) -> None:
+    """Mark a task as skipped, showing the reason in place of its progress bar"""
+    progress.update(task, skip_reason=reason)
+    progress.advance(task, 1)

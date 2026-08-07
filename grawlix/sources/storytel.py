@@ -109,6 +109,9 @@ class Storytel(Source):
             f"https://api.storytel.net/assets/v2/consumables/{book_id}/ebook",
         )
         self.__download_counter += 1
+        if "Location" not in response.headers:
+            # No ebook exists for this consumable (e.g. audiobook-only)
+            raise DataNotFound
         epub_url = response.headers["Location"]
 
         # Book details
