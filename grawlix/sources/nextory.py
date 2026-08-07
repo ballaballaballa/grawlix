@@ -1,10 +1,11 @@
 from grawlix.book import Book, Metadata, OnlineFile, BookData, EpubInParts, Result, Series
 from grawlix.encryption import AESEncryption
-from grawlix.exceptions import InvalidUrl
+from grawlix.exceptions import DataNotFound
 from .source import Source
 
 from typing import Tuple
 from datetime import date
+from urllib3.util import parse_url
 import uuid
 import base64
 
@@ -79,7 +80,8 @@ class Nextory(Source):
 
     async def download(self, url: str) -> Result:
         url_id = self._extract_id_from_url(url)
-        if "serier" in url:
+        path_segments = (parse_url(url).path or "").split("/")
+        if "series" in path_segments or "serier" in path_segments:
             return await self._download_series(url_id)
         else:
             return await self._download_book(url_id)
@@ -95,15 +97,6 @@ class Nextory(Source):
         :return: Id in url
         """
         return url.split("-")[-1].replace("/", "")
-
-
-    async def download(self, url: str) -> Result:
-        url_id = self._extract_id_from_url(url)
-        if "serier" in url:
-            return await self._download_series(url_id)
-        else:
-            return await self._download_book(url_id)
-
 
 
     async def download_book_from_id(self, book_id: str) -> Book:
@@ -142,10 +135,10 @@ class Nextory(Source):
     def _find_format(product_data) -> Tuple[str, str]:
         """Find a supported book format (epub or pdf)"""
         for format_type in ("epub", "pdf"):
-            for fmt in product_data["formats"]:
+            for fmt in product_data.get("formats", []):
                 if fmt["type"] == format_type:
                     return (format_type, fmt["identifier"])
-        raise InvalidUrl
+        raise DataNotFound
 
 
     def _extract_metadata(self, product_data: dict) -> Metadata:
